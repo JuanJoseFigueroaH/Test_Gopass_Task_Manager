@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gopass_postgres
+    environment:
+      POSTGRES_USER: gopass_user
+      POSTGRES_PASSWORD: gopass_password
+      POSTGRES_DB: gopass_tasks
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gopass_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gopass_user -d gopass_tasks"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gopass_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gopass_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./TestGopassBackend
+      dockerfile: Dockerfile
+    container_name: gopass_backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: gopass_user
+      DATABASE_PASSWORD: gopass_password
+      DATABASE_NAME: gopass_tasks
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gopass_network
+    volumes:
+      - ./TestGopassBackend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./TestGopassFrontend
+      dockerfile: Dockerfile
+    container_name: gopass_frontend
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - gopass_network
+    volumes:
+      - ./TestGopassFrontend:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  gopass_network:
+    driver: bridge
