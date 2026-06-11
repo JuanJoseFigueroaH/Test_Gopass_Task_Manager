@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gopass-green-primary: #2ebd2e;
+  --gopass-green-dark: #1f911f;
+  --gopass-black-primary: #1a1a1a;
+  --gopass-black-dark: #0d0d0d;
+}
+
+body {
+  background-color: var(--gopass-black-primary);
+  color: #ffffff;
+}
